@@ -1,3 +1,5 @@
-# Superpowers local artifacts and specs
+# Superpowers local artifacts, specs, and folders
+superpowers/
 docs/superpowers/
 .superpowers/
+**/superpowers/
