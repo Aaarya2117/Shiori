@@ -1,5 +1,7 @@
 package com.shiori.app.ui.navigation
 
+import com.shiori.app.ui.patient.MemoryMatchScreen
+import com.shiori.app.ui.patient.PatientHomeScreen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,29 +24,34 @@ fun ShioriNavHost() {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = NavRoutes.PatientHome.route) {
+        //1. Patient Home Screen
         composable(NavRoutes.PatientHome.route) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Shiori — Patient Mode",
-                    style = MaterialTheme.typography.headlineLarge
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Welcome! Tap below for Caregiver access.",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(onClick = { navController.navigate(NavRoutes.CaregiverPin.route) }) {
-                    Text("Caregiver Mode (PIN)", style = MaterialTheme.typography.bodyLarge)
+            PatientHomeScreen(
+                onGameClick = { game ->
+                    if (game == "Memory Match") {
+                        navController.navigate(NavRoutes.MemoryMatch.route)
+                    }
+                },
+                onRoutineClick = {
+                    // Routine navigation will be added later
+                },
+                onReminderClick = {
+                    // Reminder navigation will be added later
+                },
+                onCaregiverClick = {
+                    navController.navigate(NavRoutes.CaregiverPin.route)
                 }
-            }
+            )
         }
+        //2. Memory Match
+        composable(NavRoutes.MemoryMatch.route) {
+            MemoryMatchScreen(
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        //3. Caregiver PIN
         composable(NavRoutes.CaregiverPin.route) {
             Column(
                 modifier = Modifier
