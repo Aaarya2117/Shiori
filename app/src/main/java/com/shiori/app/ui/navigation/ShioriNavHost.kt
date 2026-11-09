@@ -1,5 +1,7 @@
 package com.shiori.app.ui.navigation
 
+import com.shiori.app.ui.patient.FaceRecallScreen
+import com.shiori.app.ui.patient.PatternSequenceScreen
 import com.shiori.app.ui.patient.MemoryMatchScreen
 import com.shiori.app.ui.patient.PatientHomeScreen
 import androidx.compose.foundation.layout.Arrangement
@@ -28,8 +30,16 @@ fun ShioriNavHost() {
         composable(NavRoutes.PatientHome.route) {
             PatientHomeScreen(
                 onGameClick = { game ->
-                    if (game == "Memory Match") {
-                        navController.navigate(NavRoutes.MemoryMatch.route)
+                    when (game) {
+                        "Memory Match" -> {
+                            navController.navigate(NavRoutes.MemoryMatch.route)
+                        }
+                        "pattern" -> {
+                            navController.navigate(NavRoutes.PatternSequence.route)
+                        }
+                        "face" -> {
+                            navController.navigate(NavRoutes.FaceRecall.route)
+                        }
                     }
                 },
                 onRoutineClick = {
@@ -50,6 +60,18 @@ fun ShioriNavHost() {
                     navController.popBackStack()
                 }
             )
+        }
+        // Pattern Sequence
+        composable(NavRoutes.PatternSequence.route) {
+            PatternSequenceScreen(
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        //FaceRecall
+        composable(NavRoutes.FaceRecall.route) {
+            FaceRecallScreen(onBack = { navController.popBackStack() })
         }
         //3. Caregiver PIN
         composable(NavRoutes.CaregiverPin.route) {
