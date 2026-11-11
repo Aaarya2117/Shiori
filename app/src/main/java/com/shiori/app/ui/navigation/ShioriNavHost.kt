@@ -5,6 +5,8 @@ import com.shiori.app.ui.patient.PatternSequenceScreen
 import com.shiori.app.ui.patient.MemoryMatchScreen
 import com.shiori.app.ui.patient.PatientHomeScreen
 import com.shiori.app.ui.patient.DailyRoutineScreen
+import com.shiori.app.ui.caregiver.CaregiverPinScreen
+import com.shiori.app.ui.caregiver.CaregiverDashboardScreen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -78,7 +80,7 @@ fun ShioriNavHost(
                     navController.navigate(NavRoutes.DailyRoutine.route)
                 },
                 onReminderClick = {
-                    // Reminder navigation will be added later
+                    navController.navigate(NavRoutes.DailyRoutine.route)
                 },
                 onCaregiverClick = {
                     navController.navigate(NavRoutes.CaregiverPin.route)
@@ -124,27 +126,26 @@ fun ShioriNavHost(
         }
         //3. Caregiver PIN
         composable(NavRoutes.CaregiverPin.route) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Caregiver Mode",
-                    style = MaterialTheme.typography.headlineLarge
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Placeholder for Person 4 PIN Gate",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(onClick = { navController.popBackStack() }) {
-                    Text("Back to Patient Mode", style = MaterialTheme.typography.bodyLarge)
+            CaregiverPinScreen(
+                onPinCorrect = {
+                    navController.navigate(NavRoutes.CaregiverDashboard.route) {
+                        popUpTo(NavRoutes.CaregiverPin.route) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+        //4. Caregiver Dashboard
+        composable(NavRoutes.CaregiverDashboard.route) {
+            CaregiverDashboardScreen(
+                gameRepository = gameRepository,
+                reminderRepository = reminderRepository,
+                onBackToPatient = {
+                    navController.navigate(NavRoutes.PatientHome.route) {
+                        popUpTo(NavRoutes.PatientHome.route) { inclusive = true }
+                    }
                 }
-            }
+            )
         }
     }
 }
