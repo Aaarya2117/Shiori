@@ -106,7 +106,7 @@ fun DailyRoutineScreen(
                         )
                     }
                     LinearProgressIndicator(
-                        progress = progress,
+                        progress = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(12.dp),
