@@ -7,4 +7,5 @@ sealed class NavRoutes(val route: String) {
     object MemoryMatch : NavRoutes("memory_match")
     object PatternSequence : NavRoutes("pattern_sequence")
     object FaceRecall : NavRoutes("face_recall")
+    object DailyRoutine : NavRoutes("daily_routine")
 }

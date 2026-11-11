@@ -4,6 +4,7 @@ import com.shiori.app.ui.patient.FaceRecallScreen
 import com.shiori.app.ui.patient.PatternSequenceScreen
 import com.shiori.app.ui.patient.MemoryMatchScreen
 import com.shiori.app.ui.patient.PatientHomeScreen
+import com.shiori.app.ui.patient.DailyRoutineScreen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -74,7 +75,7 @@ fun ShioriNavHost(
                     }
                 },
                 onRoutineClick = {
-                    // Routine navigation will be added later
+                    navController.navigate(NavRoutes.DailyRoutine.route)
                 },
                 onReminderClick = {
                     // Reminder navigation will be added later
@@ -113,6 +114,12 @@ fun ShioriNavHost(
                 onGameCompleted = { score, accuracy, durationSecs ->
                     recordGameSession("FACE_RECALL", score, accuracy, durationSecs)
                 }
+            )
+        }
+        // Daily Routine
+        composable(NavRoutes.DailyRoutine.route) {
+            DailyRoutineScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         //3. Caregiver PIN
