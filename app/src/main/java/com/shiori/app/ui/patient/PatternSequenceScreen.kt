@@ -29,8 +29,10 @@ private val GameColors = listOf(
 
 @Composable
 fun PatternSequenceScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onGameCompleted: ((score: Int, accuracyPercent: Float, durationSecs: Long) -> Unit)? = null
 ) {
+    val startTime = remember { System.currentTimeMillis() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -110,6 +112,9 @@ fun PatternSequenceScreen(
         if (sequence[inputPosition] != index) {
             gameOver = true
             updateBestScore()
+            val durationSecs = ((System.currentTimeMillis() - startTime) / 1000).coerceAtLeast(1)
+            val accuracy = if (attempts > 0) ((score.toFloat() / attempts) * 100f).coerceIn(0f, 100f) else 0f
+            onGameCompleted?.invoke(score, accuracy, durationSecs)
             return
         }
 

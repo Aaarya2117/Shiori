@@ -46,17 +46,30 @@ private fun createMemoryDeck(): List<MemoryCard> {
 
 @Composable
 fun MemoryMatchScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onGameCompleted: ((score: Int, accuracyPercent: Float, durationSecs: Long) -> Unit)? = null
 ) {
+    val startTime = remember { System.currentTimeMillis() }
     var cards by remember { mutableStateOf(createMemoryDeck()) }
     var firstSelected by remember { mutableIntStateOf(-1) }
     var attempts by remember { mutableIntStateOf(0) }
     var matches by remember { mutableIntStateOf(0) }
     var isChecking by remember { mutableStateOf(false) }
+    var recordedCompletion by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
     val gameComplete = matches == 8
+
+    if (gameComplete && !recordedCompletion) {
+        LaunchedEffect(matches) {
+            recordedCompletion = true
+            val durationSecs = ((System.currentTimeMillis() - startTime) / 1000).coerceAtLeast(1)
+            val accuracy = if (attempts > 0) ((8f / attempts) * 100f).coerceIn(10f, 100f) else 100f
+            val score = accuracy.toInt()
+            onGameCompleted?.invoke(score, accuracy, durationSecs)
+        }
+    }
 
     BackHandler {
         onBack()
@@ -288,6 +301,7 @@ fun MemoryMatchScreen(
                 attempts = 0
                 matches = 0
                 isChecking = false
+                recordedCompletion = false
             },
             modifier = Modifier
                 .fillMaxWidth()

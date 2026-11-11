@@ -21,9 +21,40 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
+import com.shiori.app.domain.model.GameSession
+import com.shiori.app.domain.model.SyncStatus
+import com.shiori.app.domain.repository.IGameRepository
+import com.shiori.app.domain.repository.IReminderRepository
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+
 @Composable
-fun ShioriNavHost() {
+fun ShioriNavHost(
+    gameRepository: IGameRepository? = null,
+    reminderRepository: IReminderRepository? = null
+) {
     val navController = rememberNavController()
+    val scope = rememberCoroutineScope()
+
+    fun recordGameSession(gameType: String, score: Int, accuracy: Float, durationSecs: Long) {
+        if (gameRepository != null) {
+            scope.launch {
+                val now = System.currentTimeMillis()
+                val session = GameSession(
+                    id = "session-${now}-${(1000..9999).random()}",
+                    gameType = gameType,
+                    startTimeMillis = now - (durationSecs * 1000),
+                    endTimeMillis = now,
+                    accuracyPercent = accuracy,
+                    reactionLatencyMs = 800L,
+                    difficultyLevel = 1,
+                    completed = true,
+                    syncStatus = SyncStatus.PENDING
+                )
+                gameRepository.insertGameSession(session)
+            }
+        }
+    }
 
     NavHost(navController = navController, startDestination = NavRoutes.PatientHome.route) {
         //1. Patient Home Screen
@@ -58,6 +89,9 @@ fun ShioriNavHost() {
             MemoryMatchScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onGameCompleted = { score, accuracy, durationSecs ->
+                    recordGameSession("MEMORY_MATCH", score, accuracy, durationSecs)
                 }
             )
         }
@@ -66,12 +100,20 @@ fun ShioriNavHost() {
             PatternSequenceScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onGameCompleted = { score, accuracy, durationSecs ->
+                    recordGameSession("PATTERN_SEQUENCE", score, accuracy, durationSecs)
                 }
             )
         }
         //FaceRecall
         composable(NavRoutes.FaceRecall.route) {
-            FaceRecallScreen(onBack = { navController.popBackStack() })
+            FaceRecallScreen(
+                onBack = { navController.popBackStack() },
+                onGameCompleted = { score, accuracy, durationSecs ->
+                    recordGameSession("FACE_RECALL", score, accuracy, durationSecs)
+                }
+            )
         }
         //3. Caregiver PIN
         composable(NavRoutes.CaregiverPin.route) {

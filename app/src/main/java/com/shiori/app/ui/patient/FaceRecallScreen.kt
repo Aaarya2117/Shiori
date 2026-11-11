@@ -23,7 +23,11 @@ private data class FacePerson(
 )
 
 @Composable
-fun FaceRecallScreen(onBack: () -> Unit) {
+fun FaceRecallScreen(
+    onBack: () -> Unit,
+    onGameCompleted: ((score: Int, accuracyPercent: Float, durationSecs: Long) -> Unit)? = null
+) {
+    val startTime = remember { System.currentTimeMillis() }
     val context = LocalContext.current
 
     val people = remember {
@@ -61,6 +65,9 @@ fun FaceRecallScreen(onBack: () -> Unit) {
             bestScore = score
             preferences.edit().putInt("best_score", score).apply()
         }
+        val durationSecs = ((System.currentTimeMillis() - startTime) / 1000).coerceAtLeast(1)
+        val accuracy = if (questions.isNotEmpty()) ((score.toFloat() / questions.size) * 100f).coerceIn(0f, 100f) else 100f
+        onGameCompleted?.invoke(score, accuracy, durationSecs)
     }
 
     Column(
