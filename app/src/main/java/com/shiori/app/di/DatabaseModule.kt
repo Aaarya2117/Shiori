@@ -7,6 +7,7 @@ import com.shiori.app.data.local.dao.GameSessionDao
 import com.shiori.app.data.local.dao.MedicationScheduleDao
 import com.shiori.app.data.local.dao.PatientProfileDao
 import com.shiori.app.data.local.dao.ReminderRecordDao
+import com.shiori.app.data.local.dao.RoutineTaskDao
 import com.shiori.app.security.KeystoreManager
 import dagger.Module
 import dagger.Provides
@@ -49,4 +50,7 @@ object DatabaseModule {
 
     @Provides
     fun provideGameSessionDao(db: ShioriDatabase): GameSessionDao = db.gameSessionDao()
+
+    @Provides
+    fun provideRoutineTaskDao(db: ShioriDatabase): RoutineTaskDao = db.routineTaskDao()
 }

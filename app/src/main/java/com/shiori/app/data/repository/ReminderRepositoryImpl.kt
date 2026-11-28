@@ -19,6 +19,12 @@ class ReminderRepositoryImpl @Inject constructor(
     private val recordDao: ReminderRecordDao
 ) : IReminderRepository {
 
+    override fun observeAllSchedules(): Flow<List<MedicationSchedule>> {
+        return scheduleDao.observeAllSchedules().map { list ->
+            list.map { it.toDomain() }
+        }
+    }
+
     override fun observeActiveSchedules(): Flow<List<MedicationSchedule>> {
         return scheduleDao.observeActiveSchedules().map { list ->
             list.map { it.toDomain() }

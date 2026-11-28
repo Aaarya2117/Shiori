@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MedicationScheduleDao {
+    @Query("SELECT * FROM medication_schedules ORDER BY scheduledHour ASC, scheduledMinute ASC")
+    fun observeAllSchedules(): Flow<List<MedicationScheduleEntity>>
+
     @Query("SELECT * FROM medication_schedules WHERE isActive = 1 ORDER BY scheduledHour ASC, scheduledMinute ASC")
     fun observeActiveSchedules(): Flow<List<MedicationScheduleEntity>>
 

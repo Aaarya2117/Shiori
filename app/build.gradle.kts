@@ -1,9 +1,25 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+fun escapeBuildConfigString(value: String): String {
+    val escaped = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+    return "\"$escaped\""
 }
 
 android {
@@ -18,6 +34,32 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "BHASHINI_API_KEY",
+            escapeBuildConfigString(localProps.getProperty("BHASHINI_API_KEY", ""))
+        )
+        buildConfigField(
+            "String",
+            "BHASHINI_USER_ID",
+            escapeBuildConfigString(localProps.getProperty("BHASHINI_USER_ID", ""))
+        )
+        buildConfigField(
+            "String",
+            "BHASHINI_ULCA_API_KEY",
+            escapeBuildConfigString(localProps.getProperty("BHASHINI_ULCA_API_KEY", ""))
+        )
+        buildConfigField(
+            "String",
+            "BHASHINI_PIPELINE_URL",
+            escapeBuildConfigString(
+                localProps.getProperty(
+                    "BHASHINI_PIPELINE_URL",
+                    "https://dhruva-api.bhashini.gov.in/services/inference/pipeline"
+                )
+            )
+        )
     }
 
     compileOptions {
@@ -27,6 +69,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {

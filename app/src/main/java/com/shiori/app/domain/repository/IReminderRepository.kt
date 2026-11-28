@@ -5,6 +5,7 @@ import com.shiori.app.domain.model.ReminderRecord
 import kotlinx.coroutines.flow.Flow
 
 interface IReminderRepository {
+    fun observeAllSchedules(): Flow<List<MedicationSchedule>>
     fun observeActiveSchedules(): Flow<List<MedicationSchedule>>
     suspend fun getActiveSchedules(): List<MedicationSchedule>
     suspend fun getScheduleById(id: Long): MedicationSchedule?

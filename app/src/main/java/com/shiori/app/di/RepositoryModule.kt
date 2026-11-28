@@ -3,9 +3,11 @@ package com.shiori.app.di
 import com.shiori.app.data.repository.GameRepositoryImpl
 import com.shiori.app.data.repository.PatientProfileRepositoryImpl
 import com.shiori.app.data.repository.ReminderRepositoryImpl
+import com.shiori.app.data.repository.RoutineRepositoryImpl
 import com.shiori.app.domain.repository.IGameRepository
 import com.shiori.app.domain.repository.IPatientRepository
 import com.shiori.app.domain.repository.IReminderRepository
+import com.shiori.app.domain.repository.IRoutineRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -26,4 +28,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindGameRepository(impl: GameRepositoryImpl): IGameRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRoutineRepository(impl: RoutineRepositoryImpl): IRoutineRepository
 }

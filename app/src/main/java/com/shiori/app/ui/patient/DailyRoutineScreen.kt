@@ -1,7 +1,6 @@
 package com.shiori.app.ui.patient
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,39 +14,60 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-data class RoutineTask(
-    val id: String,
-    val title: String,
-    val timeBucket: String,
-    val emoji: String,
-    var isDone: Boolean = false
-)
+import com.shiori.app.domain.model.RoutineTask
+import com.shiori.app.domain.repository.IRoutineRepository
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 @Composable
 fun DailyRoutineScreen(
+    routineRepository: IRoutineRepository? = null,
     onBack: () -> Unit
 ) {
     BackHandler { onBack() }
 
-    var tasks by remember {
+    val scope = rememberCoroutineScope()
+    val todayDate = remember { LocalDate.now().toString() }
+
+    LaunchedEffect(routineRepository) {
+        routineRepository?.ensureSeeded()
+    }
+
+    val persistedTasks by (routineRepository?.observeRoutineTasks() ?: flowOf(emptyList()))
+        .collectAsState(initial = emptyList())
+
+    var previewTasks by remember {
         mutableStateOf(
-            listOf(
-                RoutineTask("1", "Morning Walk & Fresh Air", "Morning", "🚶‍♂️"),
-                RoutineTask("2", "Drink 1 Glass of Water", "Morning", "💧"),
-                RoutineTask("3", "Take Morning Medications", "Morning", "💊"),
-                RoutineTask("4", "Nutritious Lunch", "Afternoon", "🥗"),
-                RoutineTask("5", "Afternoon Hydration", "Afternoon", "💧"),
-                RoutineTask("6", "Play 1 Cognitive Brain Game", "Afternoon", "🧠"),
-                RoutineTask("7", "Light Dinner", "Evening", "🍲"),
-                RoutineTask("8", "Evening Medications", "Evening", "💊"),
-                RoutineTask("9", "Bedtime Relaxation & Sleep", "Evening", "🌙")
-            )
+            RoutineTask.defaultTasks().mapIndexed { index, task ->
+                task.copy(id = (index + 1).toLong())
+            }
         )
     }
 
-    val completedCount = tasks.count { it.isDone }
+    val tasks = if (routineRepository != null) persistedTasks else previewTasks
+    val completedCount = tasks.count { it.isDoneToday(todayDate) }
     val progress = if (tasks.isNotEmpty()) completedCount.toFloat() / tasks.size else 0f
+
+    fun toggleTask(task: RoutineTask) {
+        if (routineRepository != null) {
+            scope.launch {
+                routineRepository.toggleTaskCompletion(task, todayDate)
+            }
+        } else {
+            val becomingDone = !task.isDoneToday(todayDate)
+            previewTasks = previewTasks.map {
+                if (it.id == task.id) {
+                    it.copy(
+                        isCompleted = becomingDone,
+                        lastCompletedDate = if (becomingDone) todayDate else ""
+                    )
+                } else {
+                    it
+                }
+            }
+        }
+    }
 
     Scaffold(
         containerColor = Color(0xFFFBFDF9)
@@ -58,7 +78,6 @@ fun DailyRoutineScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -77,7 +96,6 @@ fun DailyRoutineScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Progress Summary Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F5EA)),
@@ -118,68 +136,76 @@ fun DailyRoutineScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // Task List grouped by Time Bucket
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                val buckets = listOf("Morning", "Afternoon", "Evening")
-                buckets.forEach { bucket ->
-                    val bucketTasks = tasks.filter { it.timeBucket == bucket }
-                    item {
-                        Text(
-                            text = "$bucket Routine",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF191C1A),
-                            modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
-                        )
-                    }
-                    items(bucketTasks, key = { it.id }) { task ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 68.dp)
-                                .clickable {
-                                    tasks = tasks.map {
-                                        if (it.id == task.id) it.copy(isDone = !it.isDone) else it
+            if (tasks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No daily routine tasks yet. Ask your caregiver to add tasks.",
+                        fontSize = 18.sp,
+                        color = Color(0xFF424742)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    RoutineTask.TIME_BUCKETS.forEach { bucket ->
+                        val bucketTasks = tasks.filter { it.timeBucket == bucket }
+                        if (bucketTasks.isNotEmpty()) {
+                            item(key = "header_$bucket") {
+                                Text(
+                                    text = "$bucket Routine",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF191C1A),
+                                    modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                                )
+                            }
+                            items(bucketTasks, key = { it.id }) { task ->
+                                val isDone = task.isDoneToday(todayDate)
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 68.dp)
+                                        .clickable { toggleTask(task) },
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isDone) Color(0xFFE8F5E9) else Color.White
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        Checkbox(
+                                            checked = isDone,
+                                            onCheckedChange = { toggleTask(task) },
+                                            colors = CheckboxDefaults.colors(
+                                                checkedColor = Color(0xFF006C50)
+                                            )
+                                        )
+                                        Text(
+                                            text = task.emoji,
+                                            fontSize = 26.sp
+                                        )
+                                        Text(
+                                            text = task.title,
+                                            fontSize = 18.sp,
+                                            fontWeight = if (isDone) FontWeight.Normal else FontWeight.Medium,
+                                            color = if (isDone) Color(0xFF757575) else Color(0xFF191C1A),
+                                            modifier = Modifier.weight(1f)
+                                        )
                                     }
-                                },
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (task.isDone) Color(0xFFE8F5E9) else Color.White
-                            ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                Checkbox(
-                                    checked = task.isDone,
-                                    onCheckedChange = { checked ->
-                                        tasks = tasks.map {
-                                            if (it.id == task.id) it.copy(isDone = checked) else it
-                                        }
-                                    },
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = Color(0xFF006C50)
-                                    )
-                                )
-                                Text(
-                                    text = task.emoji,
-                                    fontSize = 26.sp
-                                )
-                                Text(
-                                    text = task.title,
-                                    fontSize = 18.sp,
-                                    fontWeight = if (task.isDone) FontWeight.Normal else FontWeight.Medium,
-                                    color = if (task.isDone) Color(0xFF757575) else Color(0xFF191C1A),
-                                    modifier = Modifier.weight(1f)
-                                )
+                                }
                             }
                         }
                     }

@@ -1,43 +1,54 @@
 package com.shiori.app.ui.navigation
 
-import com.shiori.app.ui.patient.FaceRecallScreen
-import com.shiori.app.ui.patient.PatternSequenceScreen
-import com.shiori.app.ui.patient.MemoryMatchScreen
-import com.shiori.app.ui.patient.PatientHomeScreen
-import com.shiori.app.ui.patient.DailyRoutineScreen
-import com.shiori.app.ui.caregiver.CaregiverPinScreen
-import com.shiori.app.ui.caregiver.CaregiverDashboardScreen
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-
+import com.shiori.app.alarm.AlarmScheduler
 import com.shiori.app.domain.model.GameSession
 import com.shiori.app.domain.model.SyncStatus
 import com.shiori.app.domain.repository.IGameRepository
+import com.shiori.app.domain.repository.IPatientRepository
 import com.shiori.app.domain.repository.IReminderRepository
+import com.shiori.app.domain.repository.IRoutineRepository
+import com.shiori.app.ui.caregiver.CaregiverDashboardScreen
+import com.shiori.app.ui.caregiver.CaregiverPinScreen
+import com.shiori.app.ui.patient.DailyRoutineScreen
+import com.shiori.app.ui.patient.FaceRecallScreen
+import com.shiori.app.ui.patient.MemoryMatchScreen
+import com.shiori.app.ui.patient.PatientHomeScreen
+import com.shiori.app.ui.patient.PatternSequenceScreen
+import com.shiori.app.voice.IVoiceReminderSettings
+import com.shiori.app.voice.VoiceReminderSpeaker
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
+import java.time.LocalDate
 
 @Composable
 fun ShioriNavHost(
     gameRepository: IGameRepository? = null,
-    reminderRepository: IReminderRepository? = null
+    reminderRepository: IReminderRepository? = null,
+    routineRepository: IRoutineRepository? = null,
+    patientRepository: IPatientRepository? = null,
+    alarmScheduler: AlarmScheduler? = null,
+    voiceSettings: IVoiceReminderSettings? = null,
+    voiceSpeaker: VoiceReminderSpeaker? = null
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
+    val todayDate = remember { LocalDate.now().toString() }
+
+    LaunchedEffect(routineRepository) {
+        routineRepository?.ensureSeeded()
+    }
+
+    val routineTasks by (routineRepository?.observeRoutineTasks() ?: flowOf(emptyList()))
+        .collectAsState(initial = emptyList())
 
     fun recordGameSession(gameType: String, score: Int, accuracy: Float, durationSecs: Long) {
         if (gameRepository != null) {
@@ -60,26 +71,18 @@ fun ShioriNavHost(
     }
 
     NavHost(navController = navController, startDestination = NavRoutes.PatientHome.route) {
-        //1. Patient Home Screen
         composable(NavRoutes.PatientHome.route) {
             PatientHomeScreen(
+                completedRoutineCount = routineTasks.count { it.isDoneToday(todayDate) },
+                totalRoutineCount = routineTasks.size,
                 onGameClick = { game ->
                     when (game) {
-                        "Memory Match" -> {
-                            navController.navigate(NavRoutes.MemoryMatch.route)
-                        }
-                        "pattern" -> {
-                            navController.navigate(NavRoutes.PatternSequence.route)
-                        }
-                        "face" -> {
-                            navController.navigate(NavRoutes.FaceRecall.route)
-                        }
+                        "Memory Match" -> navController.navigate(NavRoutes.MemoryMatch.route)
+                        "pattern" -> navController.navigate(NavRoutes.PatternSequence.route)
+                        "face" -> navController.navigate(NavRoutes.FaceRecall.route)
                     }
                 },
                 onRoutineClick = {
-                    navController.navigate(NavRoutes.DailyRoutine.route)
-                },
-                onReminderClick = {
                     navController.navigate(NavRoutes.DailyRoutine.route)
                 },
                 onCaregiverClick = {
@@ -87,29 +90,22 @@ fun ShioriNavHost(
                 }
             )
         }
-        //2. Memory Match
         composable(NavRoutes.MemoryMatch.route) {
             MemoryMatchScreen(
-                onBack = {
-                    navController.popBackStack()
-                },
+                onBack = { navController.popBackStack() },
                 onGameCompleted = { score, accuracy, durationSecs ->
                     recordGameSession("MEMORY_MATCH", score, accuracy, durationSecs)
                 }
             )
         }
-        // Pattern Sequence
         composable(NavRoutes.PatternSequence.route) {
             PatternSequenceScreen(
-                onBack = {
-                    navController.popBackStack()
-                },
+                onBack = { navController.popBackStack() },
                 onGameCompleted = { score, accuracy, durationSecs ->
                     recordGameSession("PATTERN_SEQUENCE", score, accuracy, durationSecs)
                 }
             )
         }
-        //FaceRecall
         composable(NavRoutes.FaceRecall.route) {
             FaceRecallScreen(
                 onBack = { navController.popBackStack() },
@@ -118,13 +114,12 @@ fun ShioriNavHost(
                 }
             )
         }
-        // Daily Routine
         composable(NavRoutes.DailyRoutine.route) {
             DailyRoutineScreen(
+                routineRepository = routineRepository,
                 onBack = { navController.popBackStack() }
             )
         }
-        //3. Caregiver PIN
         composable(NavRoutes.CaregiverPin.route) {
             CaregiverPinScreen(
                 onPinCorrect = {
@@ -135,11 +130,15 @@ fun ShioriNavHost(
                 onBack = { navController.popBackStack() }
             )
         }
-        //4. Caregiver Dashboard
         composable(NavRoutes.CaregiverDashboard.route) {
             CaregiverDashboardScreen(
                 gameRepository = gameRepository,
                 reminderRepository = reminderRepository,
+                routineRepository = routineRepository,
+                patientRepository = patientRepository,
+                alarmScheduler = alarmScheduler,
+                voiceSettings = voiceSettings,
+                voiceSpeaker = voiceSpeaker,
                 onBackToPatient = {
                     navController.navigate(NavRoutes.PatientHome.route) {
                         popUpTo(NavRoutes.PatientHome.route) { inclusive = true }

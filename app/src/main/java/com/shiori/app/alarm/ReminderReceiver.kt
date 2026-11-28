@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.shiori.app.domain.model.ReminderRecord
 import com.shiori.app.domain.model.ReminderStatus
 import com.shiori.app.domain.repository.IReminderRepository
+import com.shiori.app.voice.VoiceReminderSpeaker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,9 @@ class ReminderReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var alarmScheduler: AlarmScheduler
+
+    @Inject
+    lateinit var voiceReminderSpeaker: VoiceReminderSpeaker
 
     companion object {
         const val CHANNEL_ID = "channel_critical_reminders"
@@ -64,6 +68,7 @@ class ReminderReceiver : BroadcastReceiver() {
                             if (schedule != null) {
                                 alarmScheduler.scheduleSchedule(schedule)
                             }
+                            voiceReminderSpeaker.speakReminderIfEnabled(medicineName, dosage)
                         }
                     }
                     ACTION_MARK_TAKEN -> {
@@ -115,10 +120,11 @@ class ReminderReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val detailLine = if (dosage.isNotBlank()) "Details: $dosage" else "Tap TAKEN to acknowledge"
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("Time to take: $medicineName")
-            .setContentText("Dosage: $dosage")
+            .setContentTitle("Reminder: $medicineName")
+            .setContentText(detailLine)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)

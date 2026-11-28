@@ -3,6 +3,7 @@ package com.shiori.app.voice
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.delay
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,7 +21,7 @@ enum class PromptType {
  */
 @Singleton
 class AudioPromptManager @Inject constructor(
-    @ApplicationContext private val context: Context? = null
+    @param:ApplicationContext private val context: Context?
 ) : TextToSpeech.OnInitListener {
 
     var currentLanguage: String = "en"
@@ -105,6 +106,38 @@ class AudioPromptManager @Inject constructor(
             } catch (_: Exception) {
                 // Fallback gracefully
             }
+        }
+    }
+
+    suspend fun speakDynamicText(text: String, langCode: String): Boolean {
+        if (context == null || text.isBlank()) return false
+
+        var waitedMs = 0
+        while (!isTtsReady && tts != null && waitedMs < 1500) {
+            delay(100)
+            waitedMs += 100
+        }
+
+        val engine = tts ?: return false
+        if (!isTtsReady) return false
+
+        return try {
+            val normalized = langCode.trim().lowercase()
+            val locale = if (normalized == "en" || normalized.isEmpty()) {
+                Locale.US
+            } else {
+                Locale(normalized, "IN")
+            }
+            val langResult = engine.setLanguage(locale)
+            if (langResult == TextToSpeech.LANG_MISSING_DATA ||
+                langResult == TextToSpeech.LANG_NOT_SUPPORTED
+            ) {
+                engine.language = Locale.US
+            }
+            val result = engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "shiori_dynamic_reminder")
+            result == TextToSpeech.SUCCESS
+        } catch (_: Exception) {
+            false
         }
     }
 

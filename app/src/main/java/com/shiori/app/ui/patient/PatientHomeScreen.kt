@@ -17,9 +17,10 @@ private val ShioriGreen = Color(0xFF006C50)
 
 @Composable
 fun PatientHomeScreen(
+    completedRoutineCount: Int = 0,
+    totalRoutineCount: Int = 0,
     onGameClick: (String) -> Unit = {},
     onRoutineClick: () -> Unit = {},
-    onReminderClick: () -> Unit = {},
     onCaregiverClick: () -> Unit = {}
 ) {
     Scaffold(
@@ -57,10 +58,27 @@ fun PatientHomeScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text("Today's Progress", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text("Your daily activities will appear here.", fontSize = 18.sp)
+                    if (totalRoutineCount > 0) {
+                        val progress = completedRoutineCount.toFloat() / totalRoutineCount.toFloat()
+                        Text(
+                            "$completedRoutineCount of $totalRoutineCount daily routine tasks done",
+                            fontSize = 18.sp,
+                            color = Color(0xFF191C1A)
+                        )
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(10.dp),
+                            color = ShioriGreen,
+                            trackColor = Color.White
+                        )
+                    } else {
+                        Text("Your daily activities will appear here.", fontSize = 18.sp)
+                    }
                 }
             }
 
@@ -81,10 +99,6 @@ fun PatientHomeScreen(
             Text("Daily Routine", fontSize = 26.sp, fontWeight = FontWeight.Bold)
 
             ActionButton("📋", "View Daily Routine", onRoutineClick)
-
-            Text("Reminders", fontSize = 26.sp, fontWeight = FontWeight.Bold)
-
-            ActionButton("🔔", "Medication & Hydration", onReminderClick)
 
             OutlinedButton(
                 onClick = onCaregiverClick,

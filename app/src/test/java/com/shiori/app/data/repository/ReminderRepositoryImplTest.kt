@@ -20,9 +20,12 @@ class ReminderRepositoryImplTest {
 
     private class FakeScheduleDao : MedicationScheduleDao {
         private val schedules = mutableListOf<MedicationScheduleEntity>()
-        private val stateFlow = MutableStateFlow<List<MedicationScheduleEntity>>(emptyList())
+        private val allFlow = MutableStateFlow<List<MedicationScheduleEntity>>(emptyList())
+        private val activeFlow = MutableStateFlow<List<MedicationScheduleEntity>>(emptyList())
 
-        override fun observeActiveSchedules(): Flow<List<MedicationScheduleEntity>> = stateFlow
+        override fun observeAllSchedules(): Flow<List<MedicationScheduleEntity>> = allFlow
+
+        override fun observeActiveSchedules(): Flow<List<MedicationScheduleEntity>> = activeFlow
 
         override suspend fun getActiveSchedules(): List<MedicationScheduleEntity> =
             schedules.filter { it.isActive }
@@ -35,19 +38,27 @@ class ReminderRepositoryImplTest {
             val entity = schedule.copy(id = assignedId)
             schedules.removeAll { it.id == assignedId }
             schedules.add(entity)
-            stateFlow.value = schedules.filter { it.isActive }
+            emitFlows()
             return assignedId
         }
 
         override suspend fun updateSchedule(schedule: MedicationScheduleEntity) {
             schedules.removeAll { it.id == schedule.id }
             schedules.add(schedule)
-            stateFlow.value = schedules.filter { it.isActive }
+            emitFlows()
         }
 
         override suspend fun deleteSchedule(id: Long) {
             schedules.removeAll { it.id == id }
-            stateFlow.value = schedules.filter { it.isActive }
+            emitFlows()
+        }
+
+        private fun emitFlows() {
+            val sorted = schedules.sortedWith(
+                compareBy<MedicationScheduleEntity> { it.scheduledHour }.thenBy { it.scheduledMinute }
+            )
+            allFlow.value = sorted
+            activeFlow.value = sorted.filter { it.isActive }
         }
     }
 
@@ -133,5 +144,37 @@ class ReminderRepositoryImplTest {
         repository.recordReminderTaken(recordId, 1050L)
         val pending = repository.getPendingUnacknowledgedReminders(2000L)
         assertEquals(0, pending.size)
+    }
+
+    @Test
+    fun testObserveAllIncludesInactiveWhileObserveActiveFilters() = runBlocking {
+        val activeId = repository.insertSchedule(
+            MedicationSchedule(
+                medicineName = "Morning Pill",
+                dosage = "1 tab",
+                scheduledHour = 8,
+                scheduledMinute = 0,
+                daysOfWeek = listOf(1, 2, 3, 4, 5, 6, 7),
+                isActive = true
+            )
+        )
+        val pausedId = repository.insertSchedule(
+            MedicationSchedule(
+                medicineName = "Evening Walk Reminder",
+                dosage = "15 mins",
+                scheduledHour = 18,
+                scheduledMinute = 30,
+                daysOfWeek = listOf(1, 2, 3, 4, 5, 6, 7),
+                isActive = false
+            )
+        )
+
+        val all = repository.observeAllSchedules().first()
+        val active = repository.observeActiveSchedules().first()
+
+        assertEquals(2, all.size)
+        assertEquals(1, active.size)
+        assertEquals(activeId, active.first().id)
+        assertEquals(pausedId, all.last().id)
     }
 }
